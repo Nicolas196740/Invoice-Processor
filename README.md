@@ -54,6 +54,17 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 
 Tests: `npm test` (rules, calendar/week logic, the sheet code against a fake spreadsheet, and the email).
 
+## Public pages
+- `/about` — what the app does (no login needed). Use it as the app's home page on Google's consent screen.
+- `/privacy` — Privacy Policy: what is stored (Google name and email, invoice PDFs, invoice data) and who handles it.
+
+## Deploy (Netlify)
+`netlify.toml` builds with `npm run build`, publishes `dist/`, and deploys `netlify/functions/`.
+Environment variables (Netlify → Site configuration → Environment variables):
+- Builds only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Functions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`,
+  `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` (all of a function's variables together must stay under 4KB)
+
 ## Local setup
 1. `npm install`
 2. Copy `.env.example` to `.env` (the two `VITE_` values are already filled in).
@@ -68,4 +79,4 @@ Tests: `npm test` (rules, calendar/week logic, the sheet code against a fake spr
 - [x] Step 4: Google Sheet + period/week tabs
 - [x] Step 5: email + save
 - [ ] Step 6: dashboard
-- [ ] Step 7: deploy to Netlify
+- [x] Step 7: deploy to Netlify (config + About/Privacy pages)

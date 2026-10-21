@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · Mister O1 Invoices</title>
+  <meta name="description" content="A student project that reads restaurant vendor invoices with AI, sorts them into accounting categories, and logs them in a weekly spreadsheet.">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <header>
+    <b>Mister O1 Invoices</b>
+    <nav><a href="/">Sign in</a><a href="/privacy/">Privacy</a></nav>
+  </header>
+  <main class="page">
+    <section class="card">
+      <h1>About this app</h1>
+      <p>Mister O1 Invoices is a class project for <b>ISM4421 (Applied AI for Business)</b> at Florida Atlantic
+        University, built by Nicolas Munoz. It rebuilds an invoice tool used at a pizza restaurant
+        (Mister O1, Boca Raton) as a web app.</p>
+
+      <h2>What it does</h2>
+      <ol>
+        <li><b>Sign in with Google.</b></li>
+        <li><b>Upload an invoice:</b> one PDF, or photos of each page taken with your phone (the app combines them into one PDF).</li>
+        <li><b>AI reads it:</b> Anthropic's Claude reads the vendor, invoice number, date, total and the category breakdown.</li>
+        <li><b>Rules sort it:</b> each vendor has a rule (for example, a dairy supplier always goes to "Dairy";
+          Gordon Food Service is split using its category summary page).</li>
+        <li><b>You check it:</b> you can edit everything. Sending stays locked until the categories add up to the
+          invoice total to the cent, and the app warns you if the invoice was already sent.</li>
+        <li><b>Send:</b> the invoice is logged in the right weekly tab of a <b>test</b> spreadsheet, saved, and emailed
+          <b>only to you</b>, with the PDF attached.</li>
+      </ol>
+
+      <h2>Built with</h2>
+      <p class="muted">Netlify (hosting and server functions), Supabase (sign-in, database, file storage),
+        Anthropic Claude API (reading invoices), Google Sheets API (weekly log), Gmail (emails).</p>
+
+      <h2>Important</h2>
+      <p>This is a student project, not a commercial product. It writes only to a test spreadsheet and never
+        emails the restaurant's accounting service.</p>
+
+      <p><a href="/">Go to the app →</a> · <a href="/privacy/">Privacy Policy</a></p>
+    </section>
+  </main>
+</body>
+</html>

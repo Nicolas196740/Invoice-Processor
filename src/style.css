@@ -36,3 +36,9 @@ td:last-child { text-align:right; }
 .two { display:flex; gap:10px; } .two > div { flex:1; min-width:0; }
 .check { display:flex; gap:8px; align-items:center; margin-top:8px; } .check input { width:auto; }
 pre { white-space:pre-wrap; font:13px/1.4 ui-monospace, Menlo, monospace; background:#f3f2ef; padding:10px; border-radius:8px; }
+h1 { font-size:22px; margin:0 0 12px; }
+.page h2 { margin-top:20px; }
+.page li { margin-bottom:6px; }
+.page p, .page li { line-height:1.5; }
+footer { text-align:center; font-size:13px; color:var(--muted); padding:8px 16px 24px; }
+footer a { color:var(--muted); }
