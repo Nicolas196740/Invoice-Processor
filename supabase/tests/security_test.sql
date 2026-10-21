@@ -10,6 +10,7 @@ declare
   c uuid := '00000000-0000-4000-8000-00000000000c';
   b uuid := '00000000-0000-4000-8000-00000000000b';
   inv_a uuid; inv_b uuid; job_b uuid; n int; i int; j uuid;
+  f text; pol record; ok boolean; any_yes boolean; all_yes boolean;
 begin
   -- ── setup (as the database owner, like the server) ──
   insert into auth.users (id, email, aud, role, raw_user_meta_data)
@@ -57,9 +58,6 @@ begin
   update public.ai_jobs set status = 'error' where id = job_b;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL ai_jobs: A changed B''s job'; end if;
-  delete from storage.objects where bucket_id = 'invoices' and name = b || '/2026/P10W4/b.pdf';
-  get diagnostics n = row_count;
-  if n <> 0 then raise exception 'FAIL storage: A deleted B''s PDF'; end if;
   begin
     insert into public.invoices (user_id, vendor, invoice_number, dup_key, invoice_date, total, period_tab, sent_by, pdf_path)
     values (a, 'X', '1', 'x|1', '2026-10-20', 1, 'P10W4', 'UA', a || '/x.pdf');
@@ -72,10 +70,34 @@ begin
   exception when insufficient_privilege then null; -- expected: only the server may call it
   end;
 
-  -- ── back to the server role: daily limit ──
+  -- ── back to the server role ──
   execute 'reset role';
+
+  -- ── PDF delete permission ──
+  -- Supabase blocks direct deletes on storage tables (storage.protect_delete), so this check doesn't delete.
+  -- It evaluates the bucket's real delete rules for user A, the way Postgres does: a delete is allowed only if
+  -- at least one permissive rule says yes AND every restrictive rule says yes.
+  -- A's own file must come out "allowed" (proves the check works); B's file must come out "not allowed".
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  foreach f in array array[a || '/2026/P10W4/a.pdf', b || '/2026/P10W4/b.pdf'] loop
+    any_yes := false; all_yes := true;
+    for pol in select permissive, qual from pg_policies
+                where schemaname = 'storage' and tablename = 'objects' and cmd in ('DELETE', 'ALL')
+                  and ('authenticated'::name = any(roles) or 'public'::name = any(roles)) loop
+      execute format('select exists (select 1 from storage.objects where bucket_id = %L and name = %L and (%s))',
+                     'invoices', f, coalesce(pol.qual, 'true')) into ok;
+      if pol.permissive = 'PERMISSIVE' then any_yes := any_yes or ok; else all_yes := all_yes and ok; end if;
+    end loop;
+    if f like a || '/%' and not (any_yes and all_yes) then
+      raise exception 'FAIL storage: A is not allowed to delete their own PDF (so this check can''t be trusted)';
+    end if;
+    if f like b || '/%' and (any_yes and all_yes) then
+      raise exception 'FAIL storage: A would be allowed to delete B''s PDF';
+    end if;
+  end loop;
   perform set_config('request.jwt.claims', '', true);
-  -- C has no reads yet today.
+
+  -- ── daily limit (C has no reads yet today) ──
   for i in 1..10 loop
     j := public.start_ai_job(c, c || '/pending/' || i || '.pdf', 10);
     if j is null then raise exception 'FAIL limit: read % of 10 was refused', i; end if;
