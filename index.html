@@ -30,11 +30,30 @@
       <div id="loginMsg"></div>
     </section>
 
-    <!-- Home (upload comes in step 2) -->
+    <!-- Upload -->
     <section id="sHome" class="card hidden">
       <h2>New invoice</h2>
-      <p id="hello"></p>
-      <p class="muted">Upload and AI reading are coming in step 2.</p>
+      <p class="muted">Take a photo of every page (in order), or choose one PDF.</p>
+      <input id="files" type="file" accept="image/*,application/pdf" multiple class="hidden">
+      <button id="btnAdd" class="secondary">+ Add pages</button>
+      <div id="thumbs" class="thumbs"></div>
+      <button id="btnRead" disabled>Read invoice</button>
+      <button id="btnClear" class="secondary hidden">Start over</button>
+      <div id="uploadMsg"></div>
+    </section>
+
+    <!-- Working -->
+    <section id="sWorking" class="card hidden" style="text-align:center">
+      <div class="spinner"></div>
+      <div id="workingText">Reading invoice…</div>
+      <p class="muted">This takes about 15–30 seconds.</p>
+    </section>
+
+    <!-- AI result (the editable review screen comes in step 3) -->
+    <section id="sResult" class="card hidden">
+      <h2>What the AI read</h2>
+      <div id="resultBox"></div>
+      <button id="btnAnother">Read another invoice</button>
     </section>
 
     <!-- Profile -->
