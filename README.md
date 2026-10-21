@@ -58,6 +58,9 @@ Tests: `npm test` (rules, calendar/week logic, the sheet code against a fake spr
 ## Public pages
 - `/about` — the first screen for signed-out visitors (`/` sends them there): what the app does, how to test it,
   a link to the live spreadsheet, and a "Sign in to try it" button (`/#/signin` goes straight to Google).
+- `/samples/*.pdf` — 3 made-up sample invoices linked from the About page (GFS-style 2 pages with a Group Summary,
+  Warehouse-style "CO - 004512", Tita-style wine). Built by `python3 scripts/make_samples.py` (needs reportlab);
+  expected results are checked in `shared/samples.test.js`.
 - `/privacy` — Privacy Policy: what is stored (Google name and email, invoice PDFs, invoice data) and who handles it.
 
 ## Deploy (Netlify)
