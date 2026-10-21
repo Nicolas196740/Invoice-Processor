@@ -29,18 +29,31 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
    `record_invoice`), and saves the answer in the job row.
 4. The phone checks the job row every 2 seconds and shows the result.
 
+## Google Sheet (step 4)
+- The app writes **only** to the TEST spreadsheet `1IgetoijtxOSRaltXSUMFxuPXQDh7vvQ9Eocrkkv-Xr0`. The ID is hard-coded in
+  `netlify/lib/sheets.js`, and every request checks it, so it can't write anywhere else.
+- `check-invoice`: finds the week tab from the "2026 Calendar" tab (P10W3 = period 10, week 3) and looks for
+  duplicates in the app's database and in column C of every weekly tab.
+- `submit-invoice`: re-checks everything, creates the week tab from "Template" if needed (right after Template,
+  D4 = year, E4 = "P10 W3") and writes label / amount / initials / comment in the first empty Food row.
+  If Food is full, it adds a row inside the Food section.
+- Known limit: two people pressing Send in the same second could pick the same empty row
+  (Apps Script had a lock for this; the Sheets API doesn't).
+
 ## Local setup
 1. `npm install`
 2. Copy `.env.example` to `.env` (the two `VITE_` values are already filled in).
-3. Fill in `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` in `.env`.
+3. Fill in the secret values in `.env` (see the comments in `.env.example`).
 4. `npx netlify-cli@latest dev` and open http://localhost:8888 (this runs the site **and** the
    functions; plain `npm run dev` runs only the site).
 
 ## Progress
 - [x] Step 1: setup, Supabase tables, Google login, profile page
 - [x] Step 2: upload + AI read
-- [x] Step 3: rules + review screen (`shared/rules.js`, tests: `npm test`)
-- [ ] Step 4: Google Sheet + period/week tabs
+- [x] Step 3: rules + review screen (`shared/rules.js`)
+
+Tests: `npm test` (rules, calendar/week logic, and the sheet code against a fake spreadsheet).
+- [x] Step 4: Google Sheet + period/week tabs
 - [ ] Step 5: email + save
 - [ ] Step 6: dashboard
 - [ ] Step 7: deploy to Netlify

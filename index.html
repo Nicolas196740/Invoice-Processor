@@ -73,6 +73,7 @@
       </div>
 
       <div class="card">
+        <div id="tabMsg"></div>
         <div id="dupBox" class="hidden">
           <div id="dupMsg" class="msg bad"></div>
           <label class="check"><input id="dupOk" type="checkbox"> Send anyway (I know it's a repeat)</label>
@@ -86,6 +87,14 @@
         <button id="btnCancel" class="secondary">Cancel</button>
         <div id="sendMsg"></div>
       </div>
+    </section>
+
+    <!-- Done -->
+    <section id="sDone" class="card hidden">
+      <h2>✅ Sent</h2>
+      <div id="doneInfo"></div>
+      <p class="muted">Saving and the email are added in step 5.</p>
+      <button id="btnAnother">Send another invoice</button>
     </section>
 
     <!-- Profile -->

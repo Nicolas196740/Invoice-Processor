@@ -1,13 +1,13 @@
 import { supabase } from './supabase.js';
 import { VENDORS, CATEGORIES } from '../shared/config.js';
-import { buildResult, cleanInvoice, problems, dupKey, invoiceLabel, emailBody, round2 } from '../shared/rules.js';
+import { buildResult, cleanInvoice, problems, invoiceLabel, emailBody, round2 } from '../shared/rules.js';
 
 // ───────── state + small helpers ─────────
-const S = { user: null, profile: null, files: [], data: null, extraction: null, pdfPath: null, duplicate: null, checking: false };
+const S = { user: null, profile: null, files: [], data: null, extraction: null, pdfPath: null, checks: null, checking: false };
 const $ = (id) => document.getElementById(id);
 
 function show(id) {
-  ['sLoading', 'sLogin', 'sHome', 'sWorking', 'sReview', 'sProfile'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  ['sLoading', 'sLogin', 'sHome', 'sWorking', 'sReview', 'sDone', 'sProfile'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
   window.scrollTo(0, 0);
 }
 function msg(el, cls, text) {
@@ -138,17 +138,10 @@ $('btnRead').onclick = async () => {
 
     // 2) Ask the server to start reading it (sends only the path, not the file).
     $('workingText').textContent = 'Reading invoice…';
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('/.netlify/functions/start-read', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
-      body: JSON.stringify({ pdfPath: path }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || 'Could not start reading (' + res.status + ').');
+    const { jobId } = await api('start-read', { pdfPath: path });
 
     // 3) Check every 2 seconds until the background function is done (max 3 minutes).
-    const job = await waitForJob(body.jobId);
+    const job = await waitForJob(jobId);
     startReview(job.result, path);
   } catch (e) {
     show('sHome');
@@ -174,7 +167,7 @@ function startReview(r, path) {
   S.extraction = r.extraction;
   S.pdfPath = path;
   S.data = buildResult(r.extraction, r.vendor);
-  S.duplicate = null;
+  S.checks = null;
   const sel = $('vendor');
   sel.innerHTML = '';
   VENDORS.map((v) => v.name).concat(['Other']).forEach((v) => {
@@ -198,7 +191,7 @@ function startReview(r, path) {
   renderLines();
   renderWarnings();
   show('sReview');
-  checkDuplicate();
+  recheck();
 }
 
 function vendorName() { return $('vendor').value === 'Other' ? $('vendorOther').value.trim() : $('vendor').value; }
@@ -263,38 +256,52 @@ function update() {
     ? '✓ Categories add up to the invoice total ($' + money(total) + ')'
     : 'Categories add up to $' + money(sum) + ' — invoice total is $' + money(total) + ' (off by $' + money(Math.abs(diff)) + ')');
 
-  $('dupBox').classList.toggle('hidden', !S.duplicate);
-  $('dupMsg').textContent = S.duplicate ? 'This invoice is already logged → ' + S.duplicate : '';
-  const dupOk = !S.duplicate || $('dupOk').checked;
+  const c = S.checks || {};
+  if (S.checking) msg('tabMsg', 'warn', 'Checking the sheet…');
+  else if (c.weekTab) msg('tabMsg', 'ok', 'Goes in sheet tab ' + c.weekTab);
+  else msg('tabMsg', 'bad', (c.errors || []).join(' ') || 'Could not check the sheet.');
+  $('dupBox').classList.toggle('hidden', !c.duplicate);
+  $('dupMsg').textContent = c.duplicate ? 'This invoice is already logged → ' + c.duplicate : '';
+  const dupOk = !c.duplicate || $('dupOk').checked;
 
-  $('btnSend').disabled = !(problems(d).length === 0 && dupOk && !S.checking);
+  $('btnSend').disabled = !(problems(d).length === 0 && dupOk && !S.checking && c.weekTab);
   const label = d.vendor && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? invoiceLabel(d) : (d.vendor || '?') + ' ??.??.?? #' + d.invoiceNumber;
   $('preview').textContent = 'Subject: [CLASS] ' + label + '\n\n' + emailBody(d.lines);
 }
 
-/** Same vendor + same invoice digits already saved? (The Google Sheet check is added in step 4.) */
-let dupTimer = null;
-function checkDuplicate() {
+/** Calls one of our Netlify Functions as the signed-in user. */
+async function api(name, body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch('/.netlify/functions/' + name, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (session ? session.access_token : '') },
+    body: JSON.stringify(body),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || 'Server error (' + res.status + ').');
+  return out;
+}
+
+/** Asks the server which week tab this goes in and whether it was already sent (app + Google Sheet). */
+let checkTimer = null, checkSeq = 0;
+function recheck() {
   S.checking = true;
   update();
-  clearTimeout(dupTimer);
-  dupTimer = setTimeout(async () => {
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    const seq = ++checkSeq;
     const d = screenInvoice();
-    S.duplicate = null;
-    if (d.vendor && d.invoiceNumber) {
-      const { data, error } = await supabase.from('invoices')
-        .select('vendor, invoice_number, invoice_date, total, period_tab, sent_by')
-        .eq('dup_key', dupKey(d.vendor, d.invoiceNumber)).limit(1);
-      if (error) msg('sendMsg', 'bad', 'Could not check for duplicates: ' + error.message);
-      else if (data.length) {
-        const x = data[0];
-        S.duplicate = x.period_tab + ': ' + invoiceLabel({ vendor: x.vendor, date: x.invoice_date, invoiceNumber: x.invoice_number }) +
-          ' ($' + money(x.total) + ', sent by ' + x.sent_by + ')';
-      }
+    let checks;
+    try {
+      checks = await api('check-invoice', { vendor: d.vendor, invoiceNumber: d.invoiceNumber, date: d.date });
+    } catch (e) {
+      checks = { weekTab: null, duplicate: null, errors: [e.message] };
     }
+    if (seq !== checkSeq) return; // a newer check is on its way
+    S.checks = checks;
     S.checking = false;
     update();
-  }, 500);
+  }, 600);
 }
 
 $('vendor').onchange = () => {
@@ -306,21 +313,42 @@ $('vendor').onchange = () => {
   S.data.warnings = r.warnings;
   renderLines();
   renderWarnings();
-  checkDuplicate();
+  recheck();
 };
-$('vendorOther').oninput = checkDuplicate;
-$('number').oninput = checkDuplicate;
-$('date').onchange = update;
+$('vendorOther').oninput = recheck;
+$('number').oninput = recheck;
+$('date').onchange = recheck;
 $('total').oninput = update;
 $('comment').oninput = update;
 $('dupOk').onchange = update;
 
 $('btnCancel').onclick = () => { S.data = null; show('sHome'); };
 
-$('btnSend').onclick = () => {
-  // Writing the sheet, saving and emailing are built in steps 4–5.
-  msg('sendMsg', 'warn', 'Ready to send. Sending is added in steps 4–5.');
+$('btnSend').onclick = async () => {
+  $('btnSend').disabled = true;
+  $('workingText').textContent = 'Sending…';
+  show('sWorking');
+  try {
+    const r = await api('submit-invoice', { pdfPath: S.pdfPath, invoice: screenInvoice(), allowDuplicate: $('dupOk').checked });
+    const box = $('doneInfo');
+    box.innerHTML = '';
+    [['Logged', r.label], ['Sheet', 'tab ' + r.tab + ', row ' + r.row]].forEach(([k, v]) => {
+      const p = document.createElement('p');
+      const b = document.createElement('b');
+      b.textContent = k + ': ';
+      p.appendChild(b);
+      p.appendChild(document.createTextNode(v));
+      box.appendChild(p);
+    });
+    S.data = null;
+    show('sDone');
+  } catch (e) {
+    show('sReview');
+    msg('sendMsg', 'bad', e.message);
+    update();
+  }
 };
+$('btnAnother').onclick = () => show('sHome');
 
 // ───────── pages ─────────
 function route() {
