@@ -30,3 +30,9 @@ a { color:var(--accent); }
 table { width:100%; border-collapse:collapse; font-size:15px; }
 td { padding:6px 0; border-bottom:1px solid var(--line); vertical-align:top; }
 td:last-child { text-align:right; }
+.row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.row select { flex:1.6; } .row input { flex:1; text-align:right; }
+.row .x { width:40px; flex:none; margin:0; padding:10px 0; background:#fff; color:var(--muted); border:1px solid var(--line); }
+.two { display:flex; gap:10px; } .two > div { flex:1; min-width:0; }
+.check { display:flex; gap:8px; align-items:center; margin-top:8px; } .check input { width:auto; }
+pre { white-space:pre-wrap; font:13px/1.4 ui-monospace, Menlo, monospace; background:#f3f2ef; padding:10px; border-radius:8px; }

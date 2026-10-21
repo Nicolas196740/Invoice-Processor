@@ -39,7 +39,7 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 ## Progress
 - [x] Step 1: setup, Supabase tables, Google login, profile page
 - [x] Step 2: upload + AI read
-- [ ] Step 3: rules + review screen
+- [x] Step 3: rules + review screen (`shared/rules.js`, tests: `npm test`)
 - [ ] Step 4: Google Sheet + period/week tabs
 - [ ] Step 5: email + save
 - [ ] Step 6: dashboard

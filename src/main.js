@@ -1,11 +1,13 @@
 import { supabase } from './supabase.js';
+import { VENDORS, CATEGORIES } from '../shared/config.js';
+import { buildResult, cleanInvoice, problems, dupKey, invoiceLabel, emailBody, round2 } from '../shared/rules.js';
 
 // ───────── state + small helpers ─────────
-const S = { user: null, profile: null, files: [], pollTimer: null };
+const S = { user: null, profile: null, files: [], data: null, extraction: null, pdfPath: null, duplicate: null, checking: false };
 const $ = (id) => document.getElementById(id);
 
 function show(id) {
-  ['sLoading', 'sLogin', 'sHome', 'sWorking', 'sResult', 'sProfile'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+  ['sLoading', 'sLogin', 'sHome', 'sWorking', 'sReview', 'sProfile'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
   window.scrollTo(0, 0);
 }
 function msg(el, cls, text) {
@@ -147,7 +149,7 @@ $('btnRead').onclick = async () => {
 
     // 3) Check every 2 seconds until the background function is done (max 3 minutes).
     const job = await waitForJob(body.jobId);
-    showResult(job.result, path);
+    startReview(job.result, path);
   } catch (e) {
     show('sHome');
     msg('uploadMsg', 'bad', e.message);
@@ -166,40 +168,159 @@ async function waitForJob(jobId) {
   throw new Error('Reading took too long. Try again.');
 }
 
-// ───────── result (becomes the editable review screen in step 3) ─────────
-function showResult(r, path) {
-  const ex = r.extraction;
-  const box = $('resultBox');
-  box.innerHTML = '';
-  const t = document.createElement('table');
-  const row = (k, v) => {
-    const tr = t.insertRow();
-    tr.insertCell().textContent = k;
-    tr.insertCell().textContent = v;
-  };
-  row('Vendor (matched)', r.vendor);
-  row('Name on invoice', ex.vendor_name_on_invoice);
-  row('Invoice #', ex.invoice_number);
-  row('Invoice date', ex.invoice_date);
-  row('Total', '$' + money(ex.invoice_total));
-  (ex.summary_groups || []).forEach((g) => row('GFS group: ' + g.label, money(g.total)));
-  (ex.category_split || []).forEach((s) => row(s.category, money(s.amount)));
-  box.appendChild(t);
-  if (ex.notes) {
-    const n = document.createElement('div');
-    n.className = 'msg warn';
-    n.textContent = '⚠️ AI note: ' + ex.notes;
-    box.appendChild(n);
-  }
-  const p = document.createElement('p');
-  p.className = 'muted';
-  p.textContent = 'Saved as ' + path;
-  box.appendChild(p);
+// ───────── review ─────────
+// S.data holds what's on screen; S.extraction is what the AI read (to re-apply rules when the vendor changes).
+function startReview(r, path) {
+  S.extraction = r.extraction;
+  S.pdfPath = path;
+  S.data = buildResult(r.extraction, r.vendor);
+  S.duplicate = null;
+  const sel = $('vendor');
+  sel.innerHTML = '';
+  VENDORS.map((v) => v.name).concat(['Other']).forEach((v) => {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = v === 'Other' ? 'Other (new vendor)' : v;
+    sel.appendChild(o);
+  });
+  sel.value = S.data.vendor;
+  $('vendorOther').value = S.data.vendor === 'Other' ? S.data.vendorOnInvoice : '';
+  $('vendorOther').classList.toggle('hidden', S.data.vendor !== 'Other');
+  $('onInvoice').textContent = S.data.vendorOnInvoice ? 'On the invoice: ' + S.data.vendorOnInvoice : '';
+  $('date').value = S.data.date;
+  $('number').value = S.data.invoiceNumber;
+  $('total').value = money(S.data.total);
+  $('comment').value = '';
+  $('dupOk').checked = false;
+  msg('sendMsg');
   S.files = [];
   renderThumbs();
-  show('sResult');
+  renderLines();
+  renderWarnings();
+  show('sReview');
+  checkDuplicate();
 }
-$('btnAnother').onclick = () => show('sHome');
+
+function vendorName() { return $('vendor').value === 'Other' ? $('vendorOther').value.trim() : $('vendor').value; }
+
+/** What would be sent, read from the screen. */
+function screenInvoice() {
+  return cleanInvoice({
+    vendor: vendorName(), invoiceNumber: $('number').value, date: $('date').value,
+    total: parseFloat($('total').value), lines: S.data.lines, comment: $('comment').value,
+  });
+}
+
+function renderLines() {
+  const box = $('lines');
+  box.innerHTML = '';
+  S.data.lines.forEach((l, i) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const sel = document.createElement('select');
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = '— pick category —';
+    sel.appendChild(blank);
+    CATEGORIES.forEach((c) => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+    sel.value = l.category || '';
+    sel.onchange = () => { l.category = sel.value; update(); };
+    const amt = document.createElement('input');
+    amt.type = 'number'; amt.step = '0.01'; amt.inputMode = 'decimal'; amt.value = money(l.amount);
+    amt.oninput = () => { l.amount = parseFloat(amt.value) || 0; update(); };
+    const x = document.createElement('button');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', 'Remove line');
+    x.onclick = () => { S.data.lines.splice(i, 1); renderLines(); };
+    row.appendChild(sel); row.appendChild(amt); row.appendChild(x);
+    box.appendChild(row);
+  });
+  update();
+}
+$('btnAddLine').onclick = () => { S.data.lines.push({ category: '', amount: 0 }); renderLines(); };
+
+function renderWarnings() {
+  const w = $('warnings');
+  w.innerHTML = '';
+  (S.data.warnings || []).forEach((t) => {
+    const d = document.createElement('div');
+    d.className = 'msg warn';
+    d.textContent = '⚠️ ' + t;
+    w.appendChild(d);
+  });
+}
+
+/** Re-checks everything and unlocks Send only when the invoice is ready. */
+function update() {
+  if (!S.data) return;
+  const d = screenInvoice();
+  const sum = round2(d.lines.reduce((a, l) => a + l.amount, 0));
+  const total = isFinite(d.total) ? d.total : 0;
+  const diff = round2(total - sum);
+  const sumOk = Math.abs(diff) < 0.01 && total !== 0;
+  msg('sumMsg', sumOk ? 'ok' : 'bad', sumOk
+    ? '✓ Categories add up to the invoice total ($' + money(total) + ')'
+    : 'Categories add up to $' + money(sum) + ' — invoice total is $' + money(total) + ' (off by $' + money(Math.abs(diff)) + ')');
+
+  $('dupBox').classList.toggle('hidden', !S.duplicate);
+  $('dupMsg').textContent = S.duplicate ? 'This invoice is already logged → ' + S.duplicate : '';
+  const dupOk = !S.duplicate || $('dupOk').checked;
+
+  $('btnSend').disabled = !(problems(d).length === 0 && dupOk && !S.checking);
+  const label = d.vendor && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? invoiceLabel(d) : (d.vendor || '?') + ' ??.??.?? #' + d.invoiceNumber;
+  $('preview').textContent = 'Subject: [CLASS] ' + label + '\n\n' + emailBody(d.lines);
+}
+
+/** Same vendor + same invoice digits already saved? (The Google Sheet check is added in step 4.) */
+let dupTimer = null;
+function checkDuplicate() {
+  S.checking = true;
+  update();
+  clearTimeout(dupTimer);
+  dupTimer = setTimeout(async () => {
+    const d = screenInvoice();
+    S.duplicate = null;
+    if (d.vendor && d.invoiceNumber) {
+      const { data, error } = await supabase.from('invoices')
+        .select('vendor, invoice_number, invoice_date, total, period_tab, sent_by')
+        .eq('dup_key', dupKey(d.vendor, d.invoiceNumber)).limit(1);
+      if (error) msg('sendMsg', 'bad', 'Could not check for duplicates: ' + error.message);
+      else if (data.length) {
+        const x = data[0];
+        S.duplicate = x.period_tab + ': ' + invoiceLabel({ vendor: x.vendor, date: x.invoice_date, invoiceNumber: x.invoice_number }) +
+          ' ($' + money(x.total) + ', sent by ' + x.sent_by + ')';
+      }
+    }
+    S.checking = false;
+    update();
+  }, 500);
+}
+
+$('vendor').onchange = () => {
+  $('vendorOther').classList.toggle('hidden', $('vendor').value !== 'Other');
+  if ($('vendor').value === 'Other' && !$('vendorOther').value) $('vendorOther').value = S.data.vendorOnInvoice;
+  // Re-apply the new vendor's category rule to what the AI read.
+  const r = buildResult(S.extraction, $('vendor').value);
+  S.data.lines = r.lines;
+  S.data.warnings = r.warnings;
+  renderLines();
+  renderWarnings();
+  checkDuplicate();
+};
+$('vendorOther').oninput = checkDuplicate;
+$('number').oninput = checkDuplicate;
+$('date').onchange = update;
+$('total').oninput = update;
+$('comment').oninput = update;
+$('dupOk').onchange = update;
+
+$('btnCancel').onclick = () => { S.data = null; show('sHome'); };
+
+$('btnSend').onclick = () => {
+  // Writing the sheet, saving and emailing are built in steps 4–5.
+  msg('sendMsg', 'warn', 'Ready to send. Sending is added in steps 4–5.');
+};
 
 // ───────── pages ─────────
 function route() {
