@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mister O1 Invoices</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <header>
+    <b>Mister O1 Invoices</b>
+    <nav id="nav" class="hidden">
+      <a href="#/">Invoice</a>
+      <a href="#/profile" id="who"></a>
+    </nav>
+  </header>
+  <div class="test">CLASS PROJECT — test sheet only, emails go to you</div>
+
+  <main>
+    <!-- Loading -->
+    <section id="sLoading" class="card" style="text-align:center">
+      <div class="spinner"></div>
+    </section>
+
+    <!-- Sign in -->
+    <section id="sLogin" class="card hidden">
+      <h2>Sign in</h2>
+      <p class="muted">Reads vendor invoices with AI and logs them in the weekly sheet.
+        <a href="/about/">What is this?</a></p>
+      <button id="btnGoogle">Sign in with Google</button>
+      <div id="loginMsg"></div>
+    </section>
+
+    <!-- Upload -->
+    <section id="sHome" class="card hidden">
+      <h2>New invoice</h2>
+      <p class="muted">Take a photo of every page (in order), or choose one PDF.</p>
+      <input id="files" type="file" accept="image/*,application/pdf" multiple class="hidden">
+      <button id="btnAdd" class="secondary">+ Add pages</button>
+      <div id="thumbs" class="thumbs"></div>
+      <button id="btnRead" disabled>Read invoice</button>
+      <button id="btnClear" class="secondary hidden">Start over</button>
+      <div id="uploadMsg"></div>
+    </section>
+
+    <!-- Working -->
+    <section id="sWorking" class="card hidden" style="text-align:center">
+      <div class="spinner"></div>
+      <div id="workingText">Reading invoice…</div>
+      <p class="muted">This takes about 15–30 seconds.</p>
+    </section>
+
+    <!-- Review -->
+    <section id="sReview" class="hidden">
+      <div class="card">
+        <h2>Check before sending</h2>
+        <label>Vendor</label>
+        <select id="vendor"></select>
+        <input id="vendorOther" class="hidden" placeholder="Vendor name for the subject line" style="margin-top:8px">
+        <div id="onInvoice" class="muted" style="margin-top:4px"></div>
+        <div class="two">
+          <div><label>Invoice date</label><input id="date" type="date"></div>
+          <div><label>Invoice #</label><input id="number"></div>
+        </div>
+        <label>Invoice total ($)</label>
+        <input id="total" type="number" step="0.01" inputmode="decimal">
+      </div>
+
+      <div class="card">
+        <h2>Categories</h2>
+        <div id="lines"></div>
+        <button id="btnAddLine" class="secondary">+ Add category</button>
+        <div id="sumMsg"></div>
+      </div>
+
+      <div class="card">
+        <div id="tabMsg"></div>
+        <div id="dupBox" class="hidden">
+          <div id="dupMsg" class="msg bad"></div>
+          <label class="check"><input id="dupOk" type="checkbox"> Send anyway (I know it's a repeat)</label>
+        </div>
+        <div id="warnings"></div>
+        <label>Comment (optional, goes in the sheet)</label>
+        <input id="comment" placeholder="e.g. 2 cases short, credit pending">
+        <label>Email preview (goes only to you)</label>
+        <pre id="preview"></pre>
+        <button id="btnSend" disabled>Send</button>
+        <button id="btnCancel" class="secondary">Cancel</button>
+        <div id="sendMsg"></div>
+      </div>
+    </section>
+
+    <!-- Done -->
+    <section id="sDone" class="card hidden">
+      <h2>✅ Sent</h2>
+      <div id="doneInfo"></div>
+      <button id="btnAnother">Send another invoice</button>
+    </section>
+
+    <!-- Profile -->
+    <section id="sProfile" class="card hidden">
+      <h2>Your profile</h2>
+      <label>Email</label>
+      <input id="pEmail" disabled>
+      <label>Name</label>
+      <input id="pName" autocomplete="name">
+      <label>Initials (goes in the sheet's "Sent By" column)</label>
+      <input id="pInitials" maxlength="4" autocapitalize="characters">
+      <button id="btnSave">Save</button>
+      <button id="btnLogout" class="secondary">Sign out</button>
+      <div id="profileMsg"></div>
+    </section>
+  </main>
+  <footer><a href="/about/">About</a> · <a href="/privacy/">Privacy Policy</a></footer>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
