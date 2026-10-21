@@ -126,5 +126,10 @@ export function sheet(api) {
     return slot.lastRow + 1;
   }
 
-  return { weekInfo, findDuplicate, getOrCreateWeekTab, writeWeekRow };
+  /** Replaces the comment (column F) of a row, e.g. to flag a failed email. */
+  async function writeComment(tab, row, text) {
+    await write(q(tab) + '!F' + row + ':F' + row, [[text]]);
+  }
+
+  return { weekInfo, findDuplicate, getOrCreateWeekTab, writeWeekRow, writeComment };
 }

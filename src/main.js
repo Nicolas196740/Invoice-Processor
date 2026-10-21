@@ -332,7 +332,8 @@ $('btnSend').onclick = async () => {
     const r = await api('submit-invoice', { pdfPath: S.pdfPath, invoice: screenInvoice(), allowDuplicate: $('dupOk').checked });
     const box = $('doneInfo');
     box.innerHTML = '';
-    [['Logged', r.label], ['Sheet', 'tab ' + r.tab + ', row ' + r.row]].forEach(([k, v]) => {
+    if (r.emailError) msg('doneInfo', 'bad', 'Logged and saved, but the email failed: ' + r.emailError + ' The sheet row is flagged "EMAIL FAILED".');
+    [['Subject', r.subject], ['Sent to', r.emailError ? '— (not sent)' : r.to], ['Sheet', 'tab ' + r.tab + ', row ' + r.row], ['Body', r.body]].forEach(([k, v]) => {
       const p = document.createElement('p');
       const b = document.createElement('b');
       b.textContent = k + ': ';
@@ -340,6 +341,14 @@ $('btnSend').onclick = async () => {
       p.appendChild(document.createTextNode(v));
       box.appendChild(p);
     });
+    if (r.fileUrl) {
+      const a = document.createElement('a');
+      a.href = r.fileUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Open the PDF';
+      box.appendChild(a);
+    }
     S.data = null;
     show('sDone');
   } catch (e) {

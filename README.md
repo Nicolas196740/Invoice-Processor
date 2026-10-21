@@ -18,6 +18,7 @@ at Mister O1 Boca (see `reference/`).
 - `001_init.sql`: tables, security rules, storage bucket, seed data (17 categories, 10 vendors).
 - `002_cleanup_songforge.sql`: one-time cleanup of the old SongForge table (run by hand).
 - `003_ai_jobs.sql`: one row per "read this invoice" request (used for the background reader).
+- `004_save_invoice.sql`: email result columns + the `save_invoice` function.
 
 ## How an invoice is read (step 2)
 Netlify stops normal functions after 30 seconds, and Claude can take 15–30 s on a scanned
@@ -40,6 +41,19 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 - Known limit: two people pressing Send in the same second could pick the same empty row
   (Apps Script had a lock for this; the Sheets API doesn't).
 
+## Send (step 5)
+`submit-invoice` re-checks the invoice on the server, then in order:
+1. writes the row in the weekly tab of the TEST sheet;
+2. moves the PDF from `<user>/pending/` to `<user>/<year>/<week tab>/GFS 10.15.26 9041333489.pdf`;
+3. saves the invoice and its category lines together (`save_invoice` in `004_save_invoice.sql`; only the
+   server can call it);
+4. emails it with Nodemailer through Gmail **only to the signed-in user**. The address comes from their
+   verified Supabase session, never from the browser, and `@bill.com` addresses are always refused.
+   If the email fails, the invoice stays logged, the sheet comment says "EMAIL FAILED — send manually."
+   and the error is saved in `invoices.email_error`.
+
+Tests: `npm test` (rules, calendar/week logic, the sheet code against a fake spreadsheet, and the email).
+
 ## Local setup
 1. `npm install`
 2. Copy `.env.example` to `.env` (the two `VITE_` values are already filled in).
@@ -51,9 +65,7 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 - [x] Step 1: setup, Supabase tables, Google login, profile page
 - [x] Step 2: upload + AI read
 - [x] Step 3: rules + review screen (`shared/rules.js`)
-
-Tests: `npm test` (rules, calendar/week logic, and the sheet code against a fake spreadsheet).
 - [x] Step 4: Google Sheet + period/week tabs
-- [ ] Step 5: email + save
+- [x] Step 5: email + save
 - [ ] Step 6: dashboard
 - [ ] Step 7: deploy to Netlify
