@@ -76,7 +76,7 @@ export function sheet(api) {
     return weekFromCalendar(await values(q(cal.title)), dateStr);
   }
 
-  /** Looks for the same vendor + invoice digits in column C of every weekly tab. */
+  /** Looks for the same vendor + invoice digits in column C of every weekly tab. Returns { tab, row } or null. */
   async function findDuplicate(key) {
     const weekTabs = (await tabs()).filter((t) => WEEK_TAB.test(t.title));
     if (!weekTabs.length) return null;
@@ -85,9 +85,7 @@ export function sheet(api) {
     for (let i = 0; i < weekTabs.length; i++) {
       const rows = (r.valueRanges[i] && r.valueRanges[i].values) || [];
       for (let j = 0; j < rows.length; j++) {
-        if (keyFromLabel(rows[j][0]) === key) {
-          return 'Sheet ' + weekTabs[i].title + ' row ' + (j + 7) + ': ' + rows[j][0] + ' ($' + Number(rows[j][1] || 0).toFixed(2) + ')';
-        }
+        if (keyFromLabel(rows[j][0]) === key) return { tab: weekTabs[i].title, row: j + 7 };
       }
     }
     return null;

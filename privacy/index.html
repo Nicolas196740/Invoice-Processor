@@ -15,7 +15,7 @@
   <main class="page">
     <section class="card">
       <h1>Privacy Policy</h1>
-      <p class="muted">Effective October 21, 2026</p>
+      <p class="muted">Effective October 21, 2026 · Updated October 21, 2026</p>
       <p>Mister O1 Invoices ("the app") is a student class project by Nicolas Munoz for ISM4421 at Florida
         Atlantic University. This page explains what the app stores, why, and who else handles it.</p>
 
@@ -27,6 +27,8 @@
         <li><b>Invoice PDFs you upload</b> (including photos you take, which are combined into a PDF).</li>
         <li><b>Invoice data:</b> vendor, invoice number, date, total, category amounts, your comments, which week it
           belongs to, who sent it, and when.</li>
+        <li><b>A record of each AI read</b> (when, which file, what the AI read), used to show you the result and to
+          count the daily limit.</li>
       </ul>
       <p>The app does not ask Google for access to your Gmail, Drive, contacts or anything else in your Google
         account. It only uses Google to confirm who you are.</p>
@@ -48,8 +50,21 @@
       </ul>
 
       <h2>Who can see it</h2>
-      <p>Uploaded PDFs are stored privately and are not public. Anyone signed in to the app can see the list of
-        invoices, who sent them, and open their PDFs (the app is built for a small team).</p>
+      <ul>
+        <li><b>Only you can see your own invoices, PDFs and AI results.</b> Other users of the app cannot see them,
+          and the app checks this both in the database and on the server.</li>
+        <li><b>The spreadsheet is a public, view-only demo log.</b> Anyone with its link can see what is written there
+          for each invoice: vendor, invoice date and number, amount, the sender's <b>initials</b> and the comment.
+          Your name and email are not written to it. Please use the sample invoices, not real ones with personal
+          information.</li>
+        <li>If you send an invoice that someone already sent, the app tells you it was already logged and in which
+          week, but not who sent it.</li>
+        <li>The developer (Nicolas Munoz) can access the stored data to run and fix the app.</li>
+      </ul>
+
+      <h2>Daily limit</h2>
+      <p>Each account can have up to <b>10 invoices read by the AI per day</b> (Florida time), so the demo stays
+        affordable and can't be abused. After that, the app asks you to try again tomorrow.</p>
 
       <h2>How long it is kept, and deleting it</h2>
       <p>Data is kept for the duration of the class project. To ask for your account, profile and invoices to be

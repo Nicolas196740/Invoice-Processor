@@ -125,7 +125,7 @@ test('duplicates are found in the weekly tabs (old Wynwood name = Warehouse)', a
   const sh = sheet(f.api);
   const tab = await sh.getOrCreateWeekTab('2026-10-10');
   await sh.writeWeekRow(tab, 'Wynwood 10.10.26 #003885', 1445.85, 'NM', '');
-  assert.match(await sh.findDuplicate(dupKey('Warehouse', '3885')), /P10W2 row 7/);
+  assert.deepEqual(await sh.findDuplicate(dupKey('Warehouse', '3885')), { tab: 'P10W2', row: 7 });
   assert.equal(await sh.findDuplicate(dupKey('Warehouse', '3886')), null);
 });
 

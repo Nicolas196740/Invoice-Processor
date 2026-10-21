@@ -19,6 +19,7 @@ at Mister O1 Boca (see `reference/`).
 - `002_cleanup_songforge.sql`: one-time cleanup of the old SongForge table (run by hand).
 - `003_ai_jobs.sql`: one row per "read this invoice" request (used for the background reader).
 - `004_save_invoice.sql`: email result columns + the `save_invoice` function.
+- `005_security_lockdown.sql`: each user sees only their own data; the `start_ai_job` daily-limit function.
 
 ## How an invoice is read (step 2)
 Netlify stops normal functions after 30 seconds, and Claude can take 15–30 s on a scanned
@@ -69,6 +70,20 @@ Environment variables (Netlify → Site configuration → Environment variables)
 - Builds only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 - Functions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`,
   `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY` (all of a function's variables together must stay under 4KB)
+
+## Security (who can see what)
+- **Database (Row Level Security):** a signed-in user can only read their own `profiles` row, `invoices`,
+  `invoice_lines` and `ai_jobs`. Writing invoices and AI jobs is server-only (no browser insert/update).
+- **Storage:** in the `invoices` bucket a user can only upload, read and delete inside their own folder
+  (`<user id>/...`). A restrictive policy enforces the read rule on top of any other policy.
+- **Netlify Functions** use the service role key (which skips RLS), so every function takes the user id from the
+  verified session and checks every file path against it (`isOwnPendingPath`, `isInOwnFolder`). PDF links are
+  only signed for the user's own files.
+- **Duplicates** are checked across all users, but the message only says "already logged (sheet tab P10W4)".
+- **Daily limit:** 10 AI reads per user per day (Florida time); 50 for 04munoznicolas@gmail.com. Counted and enforced
+  in one locked database step (`start_ai_job`) before Claude is called.
+- Tests: `npm test` (server rules with fake users) and `supabase/tests/security_test.sql` (run in the Supabase SQL
+  Editor against the real database; it rolls everything back and ends with "ALL SECURITY TESTS PASSED").
 
 ## Local setup
 1. `npm install`

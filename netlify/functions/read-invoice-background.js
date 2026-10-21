@@ -1,7 +1,7 @@
 // Step 2 of reading an invoice (background function, up to 15 minutes):
 // downloads the PDF from Supabase Storage, sends it to Claude, saves the answer in the job row.
 // The "-background" at the end of the file name is what makes Netlify run it in the background.
-import { admin } from '../lib/supabase-admin.js';
+import { admin, isInOwnFolder } from '../lib/supabase-admin.js';
 import { readInvoice } from '../lib/claude.js';
 import { matchVendor } from '../../shared/rules.js';
 
@@ -19,6 +19,8 @@ export default async (req) => {
   if (!job) return;
 
   try {
+    // The job's file must be in the job owner's own folder (start-read already checked; this is a second lock).
+    if (!isInOwnFolder(job.user_id, job.pdf_path)) throw new Error('Bad file path.');
     const { data: file, error } = await db.storage.from('invoices').download(job.pdf_path);
     if (error) throw new Error('Could not open the uploaded PDF: ' + error.message);
     if (file.size > MAX_PDF_BYTES) throw new Error('The invoice is too large. Try fewer or smaller photos.');

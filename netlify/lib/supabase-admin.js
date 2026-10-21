@@ -24,3 +24,15 @@ export function httpError(status, message) {
 export function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
+
+// ───────── Path checks: the user id ALWAYS comes from the verified session, never from the browser ─────────
+
+/** True only for a PDF directly in the user's own pending folder: "<user id>/pending/<name>.pdf". */
+export function isOwnPendingPath(userId, path) {
+  return typeof path === 'string' && new RegExp('^' + userId + '/pending/[\\w-]+\\.pdf$').test(path);
+}
+
+/** True for a file somewhere inside the user's own folder (checked before creating a PDF link). */
+export function isInOwnFolder(userId, path) {
+  return typeof path === 'string' && path.startsWith(userId + '/') && !path.split('/').includes('..');
+}
