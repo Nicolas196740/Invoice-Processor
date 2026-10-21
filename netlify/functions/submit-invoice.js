@@ -3,7 +3,7 @@
 //   2) moves the PDF out of "pending" into <user>/<year>/<week tab>/,
 //   3) saves the invoice + category lines in Supabase,
 //   4) emails it ONLY to the signed-in user (address from their verified session).
-import { admin, requireUser, httpError, json } from '../lib/supabase-admin.js';
+import { admin, requireUser, httpError, json, isOwnPendingPath, isInOwnFolder } from '../lib/supabase-admin.js';
 import { sheet, googleApi } from '../lib/sheets.js';
 import { findDuplicate } from '../lib/checks.js';
 import { buildEmail, sendEmail } from '../lib/mail.js';
@@ -27,7 +27,8 @@ export default async (req) => {
     if (!profile || !profile.initials) throw httpError(400, 'Add your initials on the profile page first.');
 
     const pdfPath = String(body.pdfPath || '');
-    if (!new RegExp('^' + user.id + '/pending/[\\w-]+\\.pdf$').test(pdfPath)) throw httpError(400, 'Bad file path.');
+    // Only a PDF in the signed-in user's OWN pending folder (the user id comes from the session, not the browser).
+    if (!isOwnPendingPath(user.id, pdfPath)) throw httpError(400, 'Bad file path.');
 
     // Same checks as the review screen, done again here so nobody can skip them.
     const d = cleanInvoice(body.invoice || {});
@@ -36,7 +37,7 @@ export default async (req) => {
 
     const sh = sheet(googleApi());
     const dup = await findDuplicate(db, sh, d.vendor, d.invoiceNumber);
-    if (dup && !body.allowDuplicate) throw httpError(409, 'Already logged: ' + dup);
+    if (dup && !body.allowDuplicate) throw httpError(409, dup);
 
     const label = invoiceLabel(d);
     const text = emailBody(d.lines);
@@ -84,7 +85,8 @@ export default async (req) => {
       await sh.writeComment(tab, row, ['EMAIL FAILED — send manually.', comment].filter(Boolean).join(' ')).catch(() => {});
     }
 
-    const { data: link } = await bucket.createSignedUrl(finalPath, 60 * 60);
+    // PDF links are only ever made for files in the user's own folder.
+    const { data: link } = isInOwnFolder(user.id, finalPath) ? await bucket.createSignedUrl(finalPath, 60 * 60) : { data: null };
     return json(200, {
       label, subject: '[CLASS] ' + label, to: user.email, body: text, tab, row,
       fileUrl: link ? link.signedUrl : null, emailError, duplicateOverride: !!dup,

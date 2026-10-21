@@ -139,7 +139,14 @@ $('btnRead').onclick = async () => {
 
     // 2) Ask the server to start reading it (sends only the path, not the file).
     $('workingText').textContent = 'Reading invoice…';
-    const { jobId } = await api('start-read', { pdfPath: path });
+    let jobId;
+    try {
+      ({ jobId } = await api('start-read', { pdfPath: path }));
+    } catch (e) {
+      // Not read (e.g. daily limit reached): remove the file we just uploaded.
+      await supabase.storage.from('invoices').remove([path]).catch(() => {});
+      throw e;
+    }
 
     // 3) Check every 2 seconds until the background function is done (max 3 minutes).
     const job = await waitForJob(jobId);
@@ -262,7 +269,7 @@ function update() {
   else if (c.weekTab) msg('tabMsg', 'ok', 'Goes in sheet tab ' + c.weekTab);
   else msg('tabMsg', 'bad', (c.errors || []).join(' ') || 'Could not check the sheet.');
   $('dupBox').classList.toggle('hidden', !c.duplicate);
-  $('dupMsg').textContent = c.duplicate ? 'This invoice is already logged → ' + c.duplicate : '';
+  $('dupMsg').textContent = c.duplicate || '';
   const dupOk = !c.duplicate || $('dupOk').checked;
 
   $('btnSend').disabled = !(problems(d).length === 0 && dupOk && !S.checking && c.weekTab);
