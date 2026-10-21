@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mister O1 Invoices</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <header>
+    <b>Mister O1 Invoices</b>
+    <nav id="nav" class="hidden">
+      <a href="#/">Invoice</a>
+      <a href="#/profile" id="who"></a>
+    </nav>
+  </header>
+  <div class="test">CLASS PROJECT — test sheet only, emails go to you</div>
+
+  <main>
+    <!-- Loading -->
+    <section id="sLoading" class="card" style="text-align:center">
+      <div class="spinner"></div>
+    </section>
+
+    <!-- Sign in -->
+    <section id="sLogin" class="card hidden">
+      <h2>Sign in</h2>
+      <p class="muted">Use the Google account Nico added as a tester.</p>
+      <button id="btnGoogle">Sign in with Google</button>
+      <div id="loginMsg"></div>
+    </section>
+
+    <!-- Home (upload comes in step 2) -->
+    <section id="sHome" class="card hidden">
+      <h2>New invoice</h2>
+      <p id="hello"></p>
+      <p class="muted">Upload and AI reading are coming in step 2.</p>
+    </section>
+
+    <!-- Profile -->
+    <section id="sProfile" class="card hidden">
+      <h2>Your profile</h2>
+      <label>Email</label>
+      <input id="pEmail" disabled>
+      <label>Name</label>
+      <input id="pName" autocomplete="name">
+      <label>Initials (goes in the sheet's "Sent By" column)</label>
+      <input id="pInitials" maxlength="4" autocapitalize="characters">
+      <button id="btnSave">Save</button>
+      <button id="btnLogout" class="secondary">Sign out</button>
+      <div id="profileMsg"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

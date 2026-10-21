@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root { --bg:#f6f4f0; --card:#fff; --ink:#1d1d1b; --muted:#6b6b66; --line:#e3e0da;
+          --accent:#c8102e; --ok:#1f7a3a; --okbg:#e6f4ea; --bad:#b42318; --badbg:#fde8e7; --warnbg:#fff4d6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { background:var(--ink); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; }
+  header b { font-size:17px; }
+  header small { opacity:.75; }
+  .test { background:#f5b700; color:#1d1d1b; text-align:center; font-weight:700; font-size:13px; padding:4px; }
+  main { max-width:560px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  h2 { font-size:18px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; font-size:16px; padding:11px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+  button { width:100%; font-size:17px; font-weight:600; padding:14px; border:0; border-radius:10px; background:var(--accent); color:#fff; margin-top:12px; }
+  button.secondary { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button:disabled { opacity:.4; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .row select { flex:1.6; } .row input { flex:1; text-align:right; }
+  .row .x { width:40px; flex:none; margin:0; padding:10px 0; background:#fff; color:var(--muted); border:1px solid var(--line); }
+  .two { display:flex; gap:10px; } .two > div { flex:1; }
+  .thumbs { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .thumbs div { width:72px; height:92px; border:1px solid var(--line); border-radius:6px; background:#fafafa center/cover no-repeat;
+                font-size:11px; color:var(--muted); display:flex; align-items:flex-end; justify-content:center; padding:3px; }
+  .msg { border-radius:8px; padding:10px 12px; margin-top:10px; font-size:14px; }
+  .ok { background:var(--okbg); color:var(--ok); } .bad { background:var(--badbg); color:var(--bad); } .warn { background:var(--warnbg); }
+  .muted { color:var(--muted); font-size:13px; }
+  .hidden { display:none; }
+  .spinner { width:34px; height:34px; border:4px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin:10px auto; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .check { display:flex; gap:8px; align-items:center; margin-top:8px; } .check input { width:auto; }
+  pre { white-space:pre-wrap; font:13px/1.4 ui-monospace, Menlo, monospace; background:#f3f2ef; padding:10px; border-radius:8px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header><b>Mister O1 Invoices</b><small id="who"></small></header>
+<div id="testBar" class="test hidden">TEST MODE — emails go to you, rows go to the test sheet</div>
+<main>
+
+  <!-- 1. PIN -->
+  <section id="sLogin" class="card">
+    <h2>Enter your PIN</h2>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+    <button id="btnLogin">Continue</button>
+    <div id="loginMsg"></div>
+  </section>
+
+  <!-- 2. Upload -->
+  <section id="sUpload" class="card hidden">
+    <h2>New invoice</h2>
+    <p class="muted">Take a photo of every page (in order), or choose one PDF.</p>
+    <input id="files" type="file" accept="image/*,application/pdf" multiple class="hidden">
+    <button id="btnAdd" class="secondary">+ Add pages</button>
+    <div id="thumbs" class="thumbs"></div>
+    <button id="btnRead" disabled>Read invoice</button>
+    <button id="btnClear" class="secondary hidden">Start over</button>
+    <div id="uploadMsg"></div>
+  </section>
+
+  <!-- 3. Working -->
+  <section id="sWorking" class="card hidden" style="text-align:center">
+    <div class="spinner"></div>
+    <div id="workingText">Reading invoice…</div>
+    <p class="muted">This takes about 15–30 seconds.</p>
+  </section>
+
+  <!-- 4. Review -->
+  <section id="sReview" class="hidden">
+    <div class="card">
+      <h2>Check before sending</h2>
+      <label>Vendor</label>
+      <select id="vendor"></select>
+      <input id="vendorOther" class="hidden" placeholder="Vendor name for the subject line" style="margin-top:8px">
+      <div id="onInvoice" class="muted" style="margin-top:4px"></div>
+      <div class="two">
+        <div><label>Invoice date</label><input id="date" type="date"></div>
+        <div><label>Invoice #</label><input id="number"></div>
+      </div>
+      <label>Invoice total ($)</label>
+      <input id="total" type="number" step="0.01" inputmode="decimal">
+    </div>
+
+    <div class="card">
+      <h2>Categories</h2>
+      <div id="lines"></div>
+      <button id="btnAddLine" class="secondary">+ Add category</button>
+      <div id="sumMsg"></div>
+    </div>
+
+    <div class="card">
+      <div id="tabMsg"></div>
+      <div id="dupBox" class="hidden">
+        <div id="dupMsg" class="msg bad"></div>
+        <label class="check"><input id="dupOk" type="checkbox"> Send anyway (I know it's a repeat)</label>
+      </div>
+      <div id="warnings"></div>
+      <label>Comment (optional, goes in the sheet)</label>
+      <input id="comment" placeholder="e.g. 2 cases short, credit pending">
+      <label>Email preview</label>
+      <pre id="preview"></pre>
+      <button id="btnSend" disabled>Send</button>
+      <button id="btnCancel" class="secondary">Cancel</button>
+      <div id="sendMsg"></div>
+    </div>
+  </section>
+
+  <!-- 5. Done -->
+  <section id="sDone" class="card hidden">
+    <h2>✅ Sent</h2>
+    <div id="doneInfo"></div>
+    <button id="btnAnother">Send another invoice</button>
+  </section>
+
+</main>
+
+<script>
+  // ───────── state ─────────
+  var S = { pin: '', me: null, files: [], pdf: null, pendingId: null, data: null, checks: null };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function show(id) {
+    ['sLogin', 'sUpload', 'sWorking', 'sReview', 'sDone'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
+    window.scrollTo(0, 0);
+  }
+  function msg(el, cls, text) { $(el).innerHTML = ''; if (!text) return; var d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text; $(el).appendChild(d); }
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(function (e) { reject(e && e.message ? e : new Error(String(e))); });
+      r[fn].apply(r, args);
+    });
+  }
+  function money(n) { return (Math.round(Number(n) * 100) / 100).toFixed(2); }
+  function store(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  // ───────── 1. login ─────────
+  function doLogin(pin) {
+    msg('loginMsg');
+    return call('login', pin).then(function (me) {
+      S.pin = pin; S.me = me; store('mo1pin', pin);
+      $('who').textContent = me.name + ' (' + me.initials + ')';
+      $('testBar').classList.toggle('hidden', !me.testMode);
+      var sel = $('vendor'); sel.innerHTML = '';
+      me.vendors.concat(['Other']).forEach(function (v) { var o = document.createElement('option'); o.value = v; o.textContent = v === 'Other' ? 'Other (new vendor)' : v; sel.appendChild(o); });
+      show('sUpload');
+    }).catch(function (e) { store('mo1pin', null); show('sLogin'); msg('loginMsg', 'bad', e.message); });
+  }
+  $('btnLogin').onclick = function () { doLogin($('pin').value.trim()); };
+  $('pin').onkeydown = function (e) { if (e.key === 'Enter') $('btnLogin').click(); };
+  var saved = load('mo1pin'); if (saved) doLogin(saved);
+
+  // ───────── 2. upload ─────────
+  $('btnAdd').onclick = function () { $('files').click(); };
+  $('files').onchange = function () {
+    Array.prototype.forEach.call($('files').files, function (f) { S.files.push(f); });
+    $('files').value = '';
+    renderThumbs();
+  };
+  $('btnClear').onclick = function () { S.files = []; renderThumbs(); };
+  function renderThumbs() {
+    var t = $('thumbs'); t.innerHTML = '';
+    S.files.forEach(function (f, i) {
+      var d = document.createElement('div');
+      if (f.type.indexOf('image/') === 0) d.style.backgroundImage = 'url(' + URL.createObjectURL(f) + ')';
+      d.textContent = f.type === 'application/pdf' ? 'PDF' : 'Page ' + (i + 1);
+      t.appendChild(d);
+    });
+    $('btnRead').disabled = !S.files.length;
+    $('btnClear').classList.toggle('hidden', !S.files.length);
+    msg('uploadMsg');
+  }
+
+  function readAsDataUrl(file) {
+    return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(file); });
+  }
+  function loadImage(file) {
+    return new Promise(function (res, rej) { var img = new Image(); img.onload = function () { res(img); }; img.onerror = function () { rej(new Error('Could not open one of the photos.')); }; img.src = URL.createObjectURL(file); });
+  }
+  // Shrinks each photo (keeps it readable) and combines all pages into one PDF.
+  function buildPdf(files) {
+    var pdfs = files.filter(function (f) { return f.type === 'application/pdf'; });
+    if (pdfs.length) {
+      if (files.length > 1) return Promise.reject(new Error('Use either one PDF or photos, not both.'));
+      return readAsDataUrl(pdfs[0]).then(function (u) { return u.split(',')[1]; });
+    }
+    var doc = null;
+    return files.reduce(function (p, f) {
+      return p.then(function () { return loadImage(f); }).then(function (img) {
+        // Longest side max 2200px: small enough to upload fast, sharp enough to read small print.
+        var scale = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
+        var w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+        var jpg = c.toDataURL('image/jpeg', 0.72);
+        var o = w > h ? 'l' : 'p';
+        if (!doc) doc = new window.jspdf.jsPDF({ orientation: o, unit: 'pt', format: [w, h] });
+        else doc.addPage([w, h], o);
+        doc.addImage(jpg, 'JPEG', 0, 0, w, h);
+      });
+    }, Promise.resolve()).then(function () { return doc.output('datauristring').split(',')[1]; });
+  }
+
+  $('btnRead').onclick = function () {
+    $('workingText').textContent = 'Reading invoice…';
+    show('sWorking');
+    buildPdf(S.files).then(function (b64) {
+      if (b64.length > 25 * 1024 * 1024) throw new Error('The invoice is too large. Try fewer or smaller photos.');
+      S.pdf = b64;
+      return call('analyzeInvoice', S.pin, b64);
+    }).then(function (r) {
+      S.pendingId = r.pendingFileId; S.data = r; S.checks = r.checks;
+      fillReview();
+      show('sReview');
+    }).catch(function (e) { show('sUpload'); msg('uploadMsg', 'bad', e.message); });
+  };
+
+  // ───────── 4. review ─────────
+  function fillReview() {
+    var d = S.data;
+    $('vendor').value = S.me.vendors.indexOf(d.vendor) >= 0 ? d.vendor : 'Other';
+    $('vendorOther').value = $('vendor').value === 'Other' ? (d.vendorOnInvoice || '') : '';
+    $('vendorOther').classList.toggle('hidden', $('vendor').value !== 'Other');
+    $('onInvoice').textContent = d.vendorOnInvoice ? 'On the invoice: ' + d.vendorOnInvoice : '';
+    $('date').value = d.date; $('number').value = d.invoiceNumber; $('total').value = money(d.total);
+    $('comment').value = ''; $('dupOk').checked = false; msg('sendMsg');
+    renderLines(); renderWarnings(); renderChecks();
+  }
+
+  function vendorName() { return $('vendor').value === 'Other' ? $('vendorOther').value.trim() : $('vendor').value; }
+
+  function renderLines() {
+    var box = $('lines'); box.innerHTML = '';
+    S.data.lines.forEach(function (l, i) {
+      var row = document.createElement('div'); row.className = 'row';
+      var sel = document.createElement('select');
+      var blank = document.createElement('option'); blank.value = ''; blank.textContent = '— pick category —'; sel.appendChild(blank);
+      S.me.categories.forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+      sel.value = l.category || '';
+      sel.onchange = function () { l.category = sel.value; update(); };
+      var amt = document.createElement('input'); amt.type = 'number'; amt.step = '0.01'; amt.inputMode = 'decimal'; amt.value = money(l.amount);
+      amt.oninput = function () { l.amount = parseFloat(amt.value) || 0; update(); };
+      var x = document.createElement('button'); x.className = 'x'; x.textContent = '✕';
+      x.onclick = function () { S.data.lines.splice(i, 1); renderLines(); };
+      row.appendChild(sel); row.appendChild(amt); row.appendChild(x); box.appendChild(row);
+    });
+    update();
+  }
+  $('btnAddLine').onclick = function () { S.data.lines.push({ category: '', amount: 0 }); renderLines(); };
+
+  function renderWarnings() {
+    var w = $('warnings'); w.innerHTML = '';
+    (S.data.warnings || []).forEach(function (t) { var d = document.createElement('div'); d.className = 'msg warn'; d.textContent = '⚠️ ' + t; w.appendChild(d); });
+  }
+
+  function renderChecks() {
+    var c = S.checks || {};
+    if (c.weekTab) msg('tabMsg', 'ok', 'Goes in sheet tab ' + c.weekTab);
+    else msg('tabMsg', 'bad', (c.errors || []).join(' ') || 'Checking…');
+    $('dupBox').classList.toggle('hidden', !c.duplicate);
+    $('dupMsg').textContent = c.duplicate ? 'This invoice is already logged → ' + c.duplicate : '';
+    update();
+  }
+
+  function sumLines() { return Math.round(S.data.lines.reduce(function (a, l) { return a + (Number(l.amount) || 0); }, 0) * 100) / 100; }
+
+  function update() {
+    if (!S.data) return;
+    var total = parseFloat($('total').value) || 0, sum = sumLines(), diff = Math.round((total - sum) * 100) / 100;
+    var sumOk = Math.abs(diff) < 0.01 && total !== 0;
+    msg('sumMsg', sumOk ? 'ok' : 'bad', sumOk ? '✓ Categories add up to the invoice total ($' + money(total) + ')'
+      : 'Categories add up to $' + money(sum) + ' — invoice total is $' + money(total) + ' (off by $' + money(Math.abs(diff)) + ')');
+    var linesOk = S.data.lines.length && S.data.lines.every(function (l) { return l.category; });
+    var c = S.checks || {};
+    var dupOk = !c.duplicate || $('dupOk').checked;
+    var ready = sumOk && linesOk && dupOk && !!c.weekTab && vendorName() && $('number').value.trim() && $('date').value;
+    $('btnSend').disabled = !ready;
+    var p = $('date').value.split('-');
+    var label = vendorName() + ' ' + (p.length === 3 ? p[1] + '.' + p[2] + '.' + p[0].slice(2) : '??') + ' #' + $('number').value.trim();
+    $('preview').textContent = 'Subject: ' + (S.me.testMode ? '[TEST] ' : '') + label + '\n\n' +
+      S.data.lines.map(function (l) { return (l.category || '?') + ' ' + money(l.amount); }).join('/ ');
+  }
+
+  var timer = null;
+  function recheck() {
+    update();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      var d = { vendor: vendorName(), invoiceNumber: $('number').value.trim(), date: $('date').value };
+      call('checkInvoice', S.pin, d).then(function (c) { S.checks = c; renderChecks(); }).catch(function (e) { msg('tabMsg', 'bad', e.message); });
+    }, 600);
+  }
+  $('vendor').onchange = function () {
+    $('vendorOther').classList.toggle('hidden', $('vendor').value !== 'Other');
+    call('applyVendorRule', S.pin, S.data.extraction, $('vendor').value).then(function (r) {
+      S.data.lines = r.lines; S.data.warnings = r.warnings; renderLines(); renderWarnings(); recheck();
+    }).catch(function (e) { msg('sendMsg', 'bad', e.message); });
+  };
+  $('vendorOther').oninput = recheck; $('number').oninput = recheck; $('date').onchange = recheck;
+  $('total').oninput = update; $('dupOk').onchange = update;
+
+  $('btnCancel').onclick = function () { S.data = null; show('sUpload'); };
+
+  $('btnSend').onclick = function () {
+    var d = { vendor: vendorName(), invoiceNumber: $('number').value.trim(), date: $('date').value,
+              total: parseFloat($('total').value), lines: S.data.lines, comment: $('comment').value.trim() };
+    $('btnSend').disabled = true;
+    $('workingText').textContent = 'Sending…';
+    show('sWorking');
+    call('submitInvoice', S.pin, S.pendingId, d, $('dupOk').checked).then(function (r) {
+      var box = $('doneInfo'); box.innerHTML = '';
+      [['Subject', r.subject], ['Sent to', r.to], ['Logged in', 'tab ' + r.tab + ', row ' + r.row], ['Body', r.body]].forEach(function (kv) {
+        var p = document.createElement('p'); var b = document.createElement('b'); b.textContent = kv[0] + ': '; p.appendChild(b); p.appendChild(document.createTextNode(kv[1])); box.appendChild(p);
+      });
+      var a = document.createElement('a'); a.href = r.fileUrl; a.target = '_blank'; a.textContent = 'Open PDF in Drive'; box.appendChild(a);
+      S.files = []; S.data = null; renderThumbs();
+      show('sDone');
+    }).catch(function (e) { show('sReview'); msg('sendMsg', 'bad', e.message); update(); });
+  };
+
+  $('btnAnother').onclick = function () { show('sUpload'); };
+</script>
+</body>
+</html>

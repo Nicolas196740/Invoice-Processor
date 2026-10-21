@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.netlify/
+.env
+.env.*
+!.env.example
+*.json.key
+service-account*.json
+.DS_Store
