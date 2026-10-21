@@ -1,6 +1,6 @@
 import { dupKey, invoiceLabel } from '../../shared/rules.js';
 
-/** Same vendor + invoice digits already saved in Supabase or written in the TEST sheet? Returns a description or null. */
+/** Same vendor + invoice digits already saved in Supabase or written in the CLASS DEMO sheet? Returns a description or null. */
 export async function findDuplicate(db, sh, vendor, invoiceNumber) {
   const key = dupKey(vendor, invoiceNumber);
   const { data, error } = await db.from('invoices')

@@ -1,5 +1,5 @@
 // Send: re-checks everything on the server, then
-//   1) writes the row in the weekly tab of the TEST sheet,
+//   1) writes the row in the weekly tab of the CLASS DEMO sheet,
 //   2) moves the PDF out of "pending" into <user>/<year>/<week tab>/,
 //   3) saves the invoice + category lines in Supabase,
 //   4) emails it ONLY to the signed-in user (address from their verified session).
