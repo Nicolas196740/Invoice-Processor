@@ -22,14 +22,15 @@ const money = (n) => (Math.round(Number(n) * 100) / 100).toFixed(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ───────── sign in / out ─────────
-$('btnGoogle').onclick = async () => {
+async function signIn() {
   msg('loginMsg');
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin },
   });
   if (error) msg('loginMsg', 'bad', error.message);
-};
+}
+$('btnGoogle').onclick = signIn;
 
 $('btnLogout').onclick = async () => {
   await supabase.auth.signOut();
@@ -361,7 +362,16 @@ $('btnAnother').onclick = () => show('sHome');
 
 // ───────── pages ─────────
 function route() {
-  if (!S.user) return show('sLogin');
+  if (!S.user) {
+    // Came back from Google with an error (e.g. "access denied")? Show it on the sign-in card.
+    const err = new URLSearchParams(location.search).get('error_description') ||
+                new URLSearchParams(location.hash.replace(/^#/, '')).get('error_description');
+    if (err) { show('sLogin'); return msg('loginMsg', 'bad', err); }
+    // "Sign in to try it" on the About page links here: go straight to Google.
+    if (location.hash === '#/signin') { show('sLogin'); return signIn(); }
+    // Signed-out visitors see the About page first.
+    return location.replace('/about/');
+  }
   // No initials yet (e.g. Google gave no name) -> send them to the profile page first.
   if (location.hash === '#/profile' || !S.profile.initials) {
     fillProfile();

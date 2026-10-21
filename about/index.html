@@ -4,22 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>About · Mister O1 Invoices</title>
-  <meta name="description" content="A student project that reads restaurant vendor invoices with AI, sorts them into accounting categories, and logs them in a weekly spreadsheet.">
+  <meta name="description" content="A class project that reads restaurant vendor invoices with AI, sorts them into accounting categories, checks the math and duplicates, and logs them in a weekly spreadsheet.">
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
   <header>
     <b>Mister O1 Invoices</b>
-    <nav><a href="/">Sign in</a><a href="/privacy/">Privacy</a></nav>
+    <nav><a href="/#/signin" class="js-signin">Sign in</a><a href="/privacy/">Privacy</a></nav>
   </header>
   <main class="page">
     <section class="card">
+      <a href="/#/signin" class="btn js-signin" id="cta">Sign in to try it</a>
       <h1>About this app</h1>
-      <p>Mister O1 Invoices is a class project for <b>ISM4421 (Applied AI for Business)</b> at Florida Atlantic
-        University, built by Nicolas Munoz. It rebuilds an invoice tool used at a pizza restaurant
-        (Mister O1, Boca Raton) as a web app.</p>
+      <p>This is a real process at Mister O1, a pizza restaurant in Boca Raton: staff send every vendor invoice
+        to accounting. This app reads the invoice with Claude, sorts it into the accounting categories, checks the
+        math and duplicates, logs it in the right weekly spreadsheet tab, and emails the summary.</p>
 
-      <h2>What it does</h2>
+      <h2>How to test it</h2>
+      <ol>
+        <li>Download a sample invoice below.</li>
+        <li><a href="/#/signin" class="js-signin-text">Sign in with Google</a>.</li>
+        <li>Upload it and click <b>Read invoice</b>.</li>
+        <li>Review the categories and click <b>Send</b>.</li>
+        <li>Check your email and the
+          <a href="https://docs.google.com/spreadsheets/d/1w9fMOnig0XHMxEd7ZW0oLyGhKh-BXXcnA4a3ZPhWduA/edit?usp=sharing" target="_blank" rel="noopener">live spreadsheet</a>.</li>
+      </ol>
+      <p class="tip">Try sending the same invoice twice to see the duplicate protection.</p>
+      <a class="btn secondary" href="https://docs.google.com/spreadsheets/d/1w9fMOnig0XHMxEd7ZW0oLyGhKh-BXXcnA4a3ZPhWduA/edit?usp=sharing" target="_blank" rel="noopener">See the live spreadsheet ↗</a>
+      <p class="muted">View-only. Opens in a new tab. Each week of the restaurant's closing calendar gets its own tab (e.g. P10W4).</p>
+
+      <h2 id="samples">Sample invoices</h2>
+      <p class="muted">Coming next: three sample invoices to download.</p>
+
+      <h2>How it works</h2>
       <ol>
         <li><b>Sign in with Google.</b></li>
         <li><b>Upload an invoice:</b> one PDF, or photos of each page taken with your phone (the app combines them into one PDF).</li>
@@ -28,7 +45,7 @@
           Gordon Food Service is split using its category summary page).</li>
         <li><b>You check it:</b> you can edit everything. Sending stays locked until the categories add up to the
           invoice total to the cent, and the app warns you if the invoice was already sent.</li>
-        <li><b>Send:</b> the invoice is logged in the right weekly tab of a <b>test</b> spreadsheet, saved, and emailed
+        <li><b>Send:</b> the invoice is logged in the right weekly tab of the class demo spreadsheet, saved, and emailed
           <b>only to you</b>, with the PDF attached.</li>
       </ol>
 
@@ -37,11 +54,21 @@
         Anthropic Claude API (reading invoices), Google Sheets API (weekly log), Gmail (emails).</p>
 
       <h2>Important</h2>
-      <p>This is a student project, not a commercial product. It writes only to a class demo spreadsheet and never
+      <p>This is a student project for <b>ISM4421 (Applied AI for Business)</b> at Florida Atlantic University,
+        built by Nicolas Munoz. It is not a commercial product. It writes only to a class demo spreadsheet and never
         emails the restaurant's accounting service.</p>
 
-      <p><a href="/">Go to the app →</a> · <a href="/privacy/">Privacy Policy</a></p>
+      <p><a href="/privacy/">Privacy Policy</a></p>
     </section>
   </main>
+  <script>
+    // Already signed in on this device? Then the buttons open the app instead.
+    try {
+      if (localStorage.getItem('sb-ztksfrnobaefsrtnziqv-auth-token')) {
+        document.querySelectorAll('.js-signin').forEach(function (a) { a.href = '/'; a.textContent = 'Open the app'; });
+        document.querySelectorAll('.js-signin-text').forEach(function (a) { a.href = '/'; a.textContent = 'Open the app'; });
+      }
+    } catch (e) {}
+  </script>
 </body>
 </html>

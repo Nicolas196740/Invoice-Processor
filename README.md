@@ -56,7 +56,8 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 Tests: `npm test` (rules, calendar/week logic, the sheet code against a fake spreadsheet, and the email).
 
 ## Public pages
-- `/about` — what the app does (no login needed). Use it as the app's home page on Google's consent screen.
+- `/about` — the first screen for signed-out visitors (`/` sends them there): what the app does, how to test it,
+  a link to the live spreadsheet, and a "Sign in to try it" button (`/#/signin` goes straight to Google).
 - `/privacy` — Privacy Policy: what is stored (Google name and email, invoice PDFs, invoice data) and who handles it.
 
 ## Deploy (Netlify)
