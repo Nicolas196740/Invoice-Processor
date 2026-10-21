@@ -1,15 +1,21 @@
 /**
  * Google Sheets access (service account + Sheets REST API).
- * HARD LIMIT: this app may only ever touch the TEST spreadsheet below.
+ * HARD LIMIT: this app may only ever touch the CLASS DEMO spreadsheet below.
  */
 import { JWT } from 'google-auth-library';
 import { weekFromCalendar, findFoodSlot, WEEK_TAB } from './sheet-logic.js';
 import { keyFromLabel } from '../../shared/rules.js';
 
-export const TEST_SPREADSHEET_ID = '1IgetoijtxOSRaltXSUMFxuPXQDh7vvQ9Eocrkkv-Xr0'; // "Mister O1 Invoice App - TEST LOG"
+export const CLASS_SPREADSHEET_ID = '1w9fMOnig0XHMxEd7ZW0oLyGhKh-BXXcnA4a3ZPhWduA'; // "Mister O1 Invoices - CLASS DEMO"
 
-function assertTestSheet(id) {
-  if (id !== TEST_SPREADSHEET_ID) throw new Error('Refusing to use any spreadsheet except the TEST sheet.');
+// Sheets the class app must never touch, even if someone changes the ID above by mistake.
+// (The old TEST LOG is used by the work app.)
+const FORBIDDEN_IDS = ['1IgetoijtxOSRaltXSUMFxuPXQDh7vvQ9Eocrkkv-Xr0'];
+
+function assertClassSheet(id) {
+  if (FORBIDDEN_IDS.includes(id) || id !== CLASS_SPREADSHEET_ID) {
+    throw new Error('Refusing to use any spreadsheet except the CLASS DEMO sheet.');
+  }
 }
 
 let jwt = null;
@@ -26,11 +32,11 @@ function credentials() {
   return { email, key: key.replace(/\\n/g, '\n') };
 }
 
-/** Real Google API caller. Every request is checked against the TEST spreadsheet ID. */
-export function googleApi(spreadsheetId = TEST_SPREADSHEET_ID) {
-  assertTestSheet(spreadsheetId);
+/** Real Google API caller. Every request is checked against the CLASS DEMO spreadsheet ID. */
+export function googleApi(spreadsheetId = CLASS_SPREADSHEET_ID) {
+  assertClassSheet(spreadsheetId);
   return async (method, path, body) => {
-    assertTestSheet(spreadsheetId);
+    assertClassSheet(spreadsheetId);
     if (!jwt) {
       const c = credentials();
       jwt = new JWT({ email: c.email, key: c.key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
@@ -39,7 +45,7 @@ export function googleApi(spreadsheetId = TEST_SPREADSHEET_ID) {
     const res = await jwt.request({ url, method, data: body, validateStatus: () => true });
     if (res.status >= 400) {
       const msg = (res.data && res.data.error && res.data.error.message) || ('HTTP ' + res.status);
-      if (res.status === 403) throw new Error('Google Sheet: no access. Share the TEST sheet with the service account email as Editor. (' + msg + ')');
+      if (res.status === 403) throw new Error('Google Sheet: no access. Share the CLASS DEMO sheet with the service account email as Editor. (' + msg + ')');
       throw Object.assign(new Error('Google Sheet: ' + msg), { status: res.status });
     }
     return res.data;
@@ -66,7 +72,7 @@ export function sheet(api) {
   /** "2026-10-15" -> { name: "P10W3", period: 10, week: 3 } using the "... Calendar" tab. */
   async function weekInfo(dateStr, allTabs) {
     const cal = (allTabs || await tabs()).find((t) => /calendar/i.test(t.title));
-    if (!cal) throw new Error('No calendar tab found in the TEST sheet.');
+    if (!cal) throw new Error('No calendar tab found in the CLASS DEMO sheet.');
     return weekFromCalendar(await values(q(cal.title)), dateStr);
   }
 
@@ -93,7 +99,7 @@ export function sheet(api) {
     const info = await weekInfo(dateStr, all);
     if (all.some((t) => t.title === info.name)) return info.name;
     const tpl = all.find((t) => t.title === 'Template');
-    if (!tpl) throw new Error('No "Template" tab found in the TEST sheet.');
+    if (!tpl) throw new Error('No "Template" tab found in the CLASS DEMO sheet.');
     try {
       await api('POST', ':batchUpdate', { requests: [{ duplicateSheet: {
         sourceSheetId: tpl.sheetId, insertSheetIndex: tpl.index + 1, newSheetName: info.name } }] });

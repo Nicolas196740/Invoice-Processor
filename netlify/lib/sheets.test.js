@@ -1,8 +1,8 @@
-// Run with: npm test — uses a fake in-memory spreadsheet shaped like the TEST sheet.
+// Run with: npm test — uses a fake in-memory spreadsheet shaped like the CLASS DEMO sheet.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { weekFromCalendar, toISODate, findFoodSlot } from './sheet-logic.js';
-import { sheet, googleApi, TEST_SPREADSHEET_ID } from './sheets.js';
+import { sheet, googleApi, CLASS_SPREADSHEET_ID } from './sheets.js';
 import { dupKey } from '../../shared/rules.js';
 
 // "2026 Calendar" as Google returns it (dates as serial numbers). 46293 = 2026-09-28.
@@ -129,7 +129,9 @@ test('duplicates are found in the weekly tabs (old Wynwood name = Warehouse)', a
   assert.equal(await sh.findDuplicate(dupKey('Warehouse', '3886')), null);
 });
 
-test('refuses any spreadsheet except the TEST sheet', () => {
+test('refuses any spreadsheet except the CLASS DEMO sheet (and never the old TEST LOG)', () => {
+  assert.throws(() => googleApi('1IgetoijtxOSRaltXSUMFxuPXQDh7vvQ9Eocrkkv-Xr0'), /Refusing/);
   assert.throws(() => googleApi('some-other-spreadsheet-id'), /Refusing/);
-  assert.doesNotThrow(() => googleApi(TEST_SPREADSHEET_ID));
+  assert.doesNotThrow(() => googleApi(CLASS_SPREADSHEET_ID));
+  assert.doesNotThrow(() => googleApi());
 });

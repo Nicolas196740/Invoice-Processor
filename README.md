@@ -31,8 +31,9 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 4. The phone checks the job row every 2 seconds and shows the result.
 
 ## Google Sheet (step 4)
-- The app writes **only** to the TEST spreadsheet `1IgetoijtxOSRaltXSUMFxuPXQDh7vvQ9Eocrkkv-Xr0`. The ID is hard-coded in
-  `netlify/lib/sheets.js`, and every request checks it, so it can't write anywhere else.
+- The app writes **only** to the CLASS DEMO spreadsheet `1w9fMOnig0XHMxEd7ZW0oLyGhKh-BXXcnA4a3ZPhWduA`
+  ("Mister O1 Invoices - CLASS DEMO"). The ID is hard-coded in `netlify/lib/sheets.js` and every request checks it.
+  The old TEST LOG sheet (used by the work app) is also explicitly blocked.
 - `check-invoice`: finds the week tab from the "2026 Calendar" tab (P10W3 = period 10, week 3) and looks for
   duplicates in the app's database and in column C of every weekly tab.
 - `submit-invoice`: re-checks everything, creates the week tab from "Template" if needed (right after Template,
@@ -43,7 +44,7 @@ invoice. So reading runs in a **background function** (up to 15 minutes):
 
 ## Send (step 5)
 `submit-invoice` re-checks the invoice on the server, then in order:
-1. writes the row in the weekly tab of the TEST sheet;
+1. writes the row in the weekly tab of the CLASS DEMO sheet;
 2. moves the PDF from `<user>/pending/` to `<user>/<year>/<week tab>/GFS 10.15.26 9041333489.pdf`;
 3. saves the invoice and its category lines together (`save_invoice` in `004_save_invoice.sql`; only the
    server can call it);
